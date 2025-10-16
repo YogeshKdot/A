@@ -1,0 +1,42 @@
+name: Trigger Other Repos via SSH
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo-A
+        uses: actions/checkout@v4
+
+      - name: Run the space script
+        run: bash space_script.sh
+
+      # --- Setup and Trigger Repo-B ---
+      - name: Setup SSH for Repo B
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY_REPO_B }}" > ~/.ssh/id_ed25519_repo_b
+          chmod 600 ~/.ssh/id_ed25519_repo_b
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Clone Repo B
+        run: |
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_repo_b" git clone git@github.com:YogeshKdot/B.git
+          echo "Triggered Repo-B Successfully"
+
+      # --- Setup and Trigger Repo-C ---
+      - name: Setup SSH for Repo C
+        run: |
+          echo "${{ secrets.SSH_KEY_REPO_C }}" > ~/.ssh/id_ed25519_repo_c
+          chmod 600 ~/.ssh/id_ed25519_repo_c
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Clone Repo C
+        run: |
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_repo_c" git clone git@github.com:YogeshKdot/C.git
+          echo "Triggered Repo-C Successfully"
