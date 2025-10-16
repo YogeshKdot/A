@@ -1,4 +1,4 @@
-name: Trigger Other Repos via SSH
+name: Main Repo Trigger
 
 on:
   push:
@@ -6,37 +6,50 @@ on:
       - main
 
 jobs:
-  trigger:
+  trigger-workflows:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout Repo-A
       - name: Checkout Repo-A
         uses: actions/checkout@v4
 
-      - name: Run the space script
-        run: bash space_script.sh
+      # Step 2: Make script executable
+      - name: Make script executable
+        run: chmod +x space_script.sh
 
-      # --- Setup and Trigger Repo-B ---
-      - name: Setup SSH for Repo B
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY_REPO_B }}" > ~/.ssh/id_ed25519_repo_b
-          chmod 600 ~/.ssh/id_ed25519_repo_b
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      # Step 3: Run your script
+      - name: Run the script
+        run: ./space_script.sh
 
-      - name: Clone Repo B
-        run: |
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_repo_b" git clone git@github.com:YogeshKdot/B.git
-          echo "Triggered Repo-B Successfully"
+      # Step 4: Set up SSH for triggering Repo-B and Repo-C
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # --- Setup and Trigger Repo-C ---
-      - name: Setup SSH for Repo C
+      # Step 5: Trigger Repo-B
+      - name: Trigger Repo-B
         run: |
-          echo "${{ secrets.SSH_KEY_REPO_C }}" > ~/.ssh/id_ed25519_repo_c
-          chmod 600 ~/.ssh/id_ed25519_repo_c
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git clone git@github.com:your-org/Repo-B.git
+          cd Repo-B
+          git pull origin main
+          echo "Triggered from Repo-A" >> trigger.log
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add trigger.log
+          git commit -m "Triggered from Repo-A [skip ci]" || echo "No changes to commit"
+          git push origin main
 
-      - name: Clone Repo C
+      # Step 6: Trigger Repo-C
+      - name: Trigger Repo-C
         run: |
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_repo_c" git clone git@github.com:YogeshKdot/C.git
-          echo "Triggered Repo-C Successfully"
+          git clone git@github.com:your-org/Repo-C.git
+          cd Repo-C
+          git pull origin main
+          echo "Triggered from Repo-A" >> trigger.log
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add trigger.log
+          git commit -m "Triggered from Repo-A [skip ci]" || echo "No changes to commit"
+          git push origin main
